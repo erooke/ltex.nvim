@@ -35,6 +35,29 @@ local add_words = function(client, words)
 	})
 end
 
+--- Add ignore rules to a running ltex-ls instance
+-- @param client
+-- @param rules
+local add_rules = function(client, rules)
+	local settings = client.config.settings
+	local disabledRules = settings.ltex.disabledRules
+
+	if disabledRules == nil then
+		disabledRules = {
+			["en-US"] = {},
+		}
+	end
+
+	for _, word in ipairs(rules) do
+		table.insert(disabledRules["en-US"], word)
+	end
+
+	settings.ltex.disabledRules = disabledRules
+	client.notify("workspace/didChangeConfiguration", {
+		settings = settings,
+	})
+end
+
 --- Save words to a dictionary file
 -- @param client a neovim lsp client
 -- @param words a table of words to save
@@ -71,8 +94,14 @@ function M.setup(config)
 		vim.lsp.commands["_ltex.addToDictionary"] = function(args, ctx)
 			local client = vim.lsp.get_client_by_id(ctx.client_id)
 			local words = args.arguments[1].words["en-US"]
-			ltex.add_words(client, words)
-			ltex.write_words(client, words)
+			add_words(client, words)
+			write_words(client, words)
+		end
+
+		vim.lsp.commands['_ltex.disableRules'] = function(args, ctx)
+			local client = vim.lsp.get_client_by_id(ctx.client_id)
+			local rules = args.arguments[1].ruleIds["en-US"]
+			add_rules(client, rules)
 		end
 	end)
 
