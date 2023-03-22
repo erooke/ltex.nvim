@@ -1,5 +1,6 @@
 local lsp = require("lspconfig")
 local Path = require("plenary.path")
+local util = require("ltex.util")
 
 local M = {}
 
@@ -12,70 +13,13 @@ local get_dictionary = function(client)
 	return root_dir / ".dictionary"
 end
 
---- Add words to a running ltex-ls instance
--- @param client a neovim lsp client
--- @param words a table of words to add
-local add_words = function(client, words)
+--- Change the settings for ltex and notify the server
+-- @param client nvim lsp client
+-- @param field str
+-- @param table table
+local update_settings = function(client, field, table)
 	local settings = client.config.settings
-	local dictionary = settings.ltex.dictionary
-
-	if dictionary == nil then
-		dictionary = {
-			["en-US"] = {},
-		}
-	end
-
-	for _, word in ipairs(words) do
-		table.insert(dictionary["en-US"], word)
-	end
-
-	settings.ltex.dictionary = dictionary
-	client.notify("workspace/didChangeConfiguration", {
-		settings = settings,
-	})
-end
-
---- Add ignore rules to a running ltex-ls instance
--- @param client
--- @param rules
-local add_rules = function(client, rules)
-	local settings = client.config.settings
-	local disabledRules = settings.ltex.disabledRules
-
-	if disabledRules == nil then
-		disabledRules = {
-			["en-US"] = {},
-		}
-	end
-
-	for _, word in ipairs(rules) do
-		table.insert(disabledRules["en-US"], word)
-	end
-
-	settings.ltex.disabledRules = disabledRules
-	client.notify("workspace/didChangeConfiguration", {
-		settings = settings,
-	})
-end
-
---- Add false positive rules to a running ltex-ls instance
--- @param client
--- @param rules
-local add_false_positives = function(client, rules)
-	local settings = client.config.settings
-	local falsePositives = settings.ltex.hiddenFalsePositives
-
-	if falsePositives == nil then
-		falsePositives = {
-			["en-US"] = {},
-		}
-	end
-
-	for _, word in ipairs(rules) do
-		table.insert(falsePositives["en-US"], word)
-	end
-
-	settings.ltex.hiddenFalsePositives = falsePositives
+	settings.ltex = util.update_field(settings.ltex, field, table)
 	client.notify("workspace/didChangeConfiguration", {
 		settings = settings,
 	})
@@ -106,7 +50,8 @@ local load_words = function(client)
 	end
 
 	local words = dictionary_file:readlines()
-	add_words(client, words)
+
+	update_settings(client, "dictionary", { ["en-US"] = words })
 end
 
 function M.setup(config)
@@ -116,21 +61,21 @@ function M.setup(config)
 	lsp.util.on_setup = lsp.util.add_hook_after(lsp.util.on_setup, function(client)
 		vim.lsp.commands["_ltex.addToDictionary"] = function(args, ctx)
 			local client = vim.lsp.get_client_by_id(ctx.client_id)
-			local words = args.arguments[1].words["en-US"]
-			add_words(client, words)
-			write_words(client, words)
+			local words = args.arguments[1].words
+			update_settings(client, "dictionary", words)
+			write_words(client, words["en-US"])
 		end
 
 		vim.lsp.commands["_ltex.disableRules"] = function(args, ctx)
 			local client = vim.lsp.get_client_by_id(ctx.client_id)
-			local rules = args.arguments[1].ruleIds["en-US"]
-			add_rules(client, rules)
+			local rules = args.arguments[1].ruleIds
+			update_settings(client, "disabledRules", rules)
 		end
 
 		vim.lsp.commands["_ltex.hideFalsePositives"] = function(args, ctx)
 			local client = vim.lsp.get_client_by_id(ctx.client_id)
-			local rules = args.arguments[1].falsePositives["en-US"]
-			add_false_positives(client, rules)
+			local rules = args.arguments[1].falsePositives
+			update_settings(client, "hiddenFalsePositives", rules)
 		end
 	end)
 
