@@ -54,29 +54,33 @@ local load_words = function(client)
 	update_settings(client, "dictionary", { ["en-US"] = words })
 end
 
+function add_lsp_command(name, func)
+	vim.lsp.commands[name] = function(args, ctx)
+		local client = vim.lsp.get_client_by_id(ctx.client_id)
+		func(client, args)
+	end
+end
+
 function M.setup(config)
 	-- Patch the on attach function to load the dictionary file after attaching
 	config.on_attach = lsp.util.add_hook_after(config.on_attach, load_words)
 
 	lsp.util.on_setup = lsp.util.add_hook_after(lsp.util.on_setup, function(client)
-		vim.lsp.commands["_ltex.addToDictionary"] = function(args, ctx)
-			local client = vim.lsp.get_client_by_id(ctx.client_id)
+		add_lsp_command("_ltex.addToDictionary", function(client, args)
 			local words = args.arguments[1].words
 			update_settings(client, "dictionary", words)
 			write_words(client, words["en-US"])
-		end
+		end)
 
-		vim.lsp.commands["_ltex.disableRules"] = function(args, ctx)
-			local client = vim.lsp.get_client_by_id(ctx.client_id)
+		add_lsp_command("_ltex.disableRules", function(client, args)
 			local rules = args.arguments[1].ruleIds
 			update_settings(client, "disabledRules", rules)
-		end
+		end)
 
-		vim.lsp.commands["_ltex.hideFalsePositives"] = function(args, ctx)
-			local client = vim.lsp.get_client_by_id(ctx.client_id)
+		add_lsp_command("_ltex.hideFalsePositives", function(client, args)
 			local rules = args.arguments[1].falsePositives
 			update_settings(client, "hiddenFalsePositives", rules)
-		end
+		end)
 	end)
 
 	lsp.ltex.setup(config)
