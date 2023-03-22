@@ -55,10 +55,9 @@ ltex.setup({
 
 ## Limitations
 
-- This only handles adding words to a dictionary and ignoring rules. There is no support for false positives.
 - This saves your dictionary to the root of your project with a filename `.dictionary`
 - This assumes your language is en-US
-- Ignored rules do not persist across sessions as I'm not sure how best to implement that.
+- Ignored rules and false positives do not persist across sessions as I'm not sure where to save those
 
 
 ## Prior Art
